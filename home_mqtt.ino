@@ -115,10 +115,11 @@ void loop() {
 
   //RS232 interface with ardbox PLC
   if (Serial2.available()) {
-    String cp = Serial2.readString();
+    String cp = Serial2.readStringUntil('\n');
     cp.trim();
     DEBUG_PRINTLN("Serial2: "+cp);
-    homie.publish_property(String("relay/10")+cp.substring(0,1), cp.substring(2));
+    if(cp.length()>2) //check we don't fail next line even if it is just garbage
+      homie.publish_property(String("relay/10")+cp.substring(0,1), cp.substring(2));
   }
 
   //emontx
