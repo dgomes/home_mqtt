@@ -1,6 +1,7 @@
 #include <relaybox.h>
 #include <UIPEthernet.h>
 #include <homie.h>
+#include <avr/wdt.h>
 
 #include "emontx.h"
 
@@ -43,7 +44,7 @@ const char *nodes[] = {"relay/1",
                        "relay/108",
                        };  
 
-Homie homie(mqttClient, String("m-duino"), nodes, MAX_MDUINO_RELAY+MAX_ARDBOX_RELAY); //16 relays + 8 relays
+Homie homie(mqttClient, String("m-duino"), nodes, MAX_MDUINO_RELAY+MAX_ARDBOX_RELAY); //16 relays m-duino + 8 relays from Ardbox
 RelayBox mduino(_34R);
 
 // RelayBox callback whenever there is a state change
@@ -104,11 +105,14 @@ void setup() {
   mqttClient.setServer(server, server_port);
   mduino.setup(relay_callback);
   homie.setBrand("industrial shields");
-  homie.setFirmware("mduino", "0.1.0");
+  homie.setFirmware("mduino", "0.2.0");
   homie.setup(myip , mqtt_callback);
+
+  wdt_enable(WDTO_8S);
 }
 
 void loop() {
+  wdt_reset();
   Ethernet.maintain();
   homie.loop();
   mduino.loop();
