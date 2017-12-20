@@ -5,7 +5,7 @@
 
 #include "emontx.h"
 
-IPAddress server(192,168,1,10);
+IPAddress server(192,168,1,100);
 int server_port = 1883;
 uint8_t mac[6] = {0x72,0x00,0x05,0xbd,0x83,0xe1};
 
@@ -109,6 +109,7 @@ void setup() {
   homie.setup(myip , mqtt_callback);
 
   wdt_enable(WDTO_8S);
+  Serial.println("SETUP DONE");
 }
 
 void loop() {
