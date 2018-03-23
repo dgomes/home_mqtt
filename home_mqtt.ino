@@ -46,6 +46,7 @@ const char *nodes[] = {"relay/1",
 
 Homie homie(mqttClient, String("m-duino"), nodes, MAX_MDUINO_RELAY+MAX_ARDBOX_RELAY); //16 relays m-duino + 8 relays from Ardbox
 RelayBox mduino(_34R);
+unsigned long time; // var created to show uptime more close to zero milliseconds as possible
 
 // RelayBox callback whenever there is a state change
 void relay_callback(uint8_t i, bool mode) {  //true = HIGH, false = LOW
@@ -61,8 +62,8 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   int relay_number = atoi((const char *)topic + homie.base_topic().length()+strlen("relay/"));
 
   if(relay_number >= 1 && relay_number <= MAX_MDUINO_RELAY) {
-    if(atoi(msg)>0) {
-      mduino.switchRelay(relay_number, atoi(msg));
+    if(atol(msg)>0) {
+      mduino.switchRelay(relay_number, (unsigned long) atol(msg));
     } else if(strncmp(msg, "true", 4)==0) {
       mduino.switchRelay(relay_number,true);
     } else if(strncmp(msg, "false", 5)==0) {
@@ -74,9 +75,9 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
   if(relay_number >= 101 && relay_number <= (100+MAX_ARDBOX_RELAY)) {
     relay_number-=100;
-    if(atoi(msg)>0) {
-      Serial2.println(String(relay_number)+","+String(atoi(msg)));
-      DEBUG_PRINTLN(String("> ")+String(relay_number)+","+String(atoi(msg)));
+    if(atol(msg)>0) {
+      Serial2.println(String(relay_number)+","+String(atol(msg)));
+      DEBUG_PRINTLN(String("> ")+String(relay_number)+","+String(atol(msg)));
     } else if(strncmp(msg, "true", 4)==0) {
       Serial2.println(String(relay_number)+",true");
     } else if(strncmp(msg, "false", 5)==0) {
@@ -96,7 +97,8 @@ void setup() {
   Serial1.begin(9600); //emontx
   Serial2.begin(2400); //ardbox
 
-  Ethernet.begin(mac);
+  byte ip[] = { 192, 168, 1, 71 };  
+  Ethernet.begin(mac, ip);
   
   Serial.print("localIP: ");
   Serial.println(Ethernet.localIP());
@@ -105,19 +107,30 @@ void setup() {
   mqttClient.setServer(server, server_port);
   mduino.setup(relay_callback);
   homie.setBrand("industrial shields");
-  homie.setFirmware("mduino", "0.2.0");
+  homie.setFirmware("mduino", "0.2.1");
   homie.setup(myip , mqtt_callback);
 
   wdt_enable(WDTO_8S);
   Serial.println("SETUP DONE");
 }
 
-void loop() {
+void maintain() {
   wdt_reset();
   Ethernet.maintain();
   homie.loop();
   mduino.loop();
+  delay(50);
+}
 
+void loop() {
+  maintain();
+  
+  // Uptime
+  if ((millis()/10000) != time) {
+    time = millis()/10000;
+    homie.publish_property("uptime", String(millis()/1000));
+  }
+  
   //RS232 interface with ardbox PLC
   if (Serial2.available()) {
     String cp = Serial2.readStringUntil('\n');
@@ -126,12 +139,13 @@ void loop() {
     if(cp.length()>2) //check we don't fail next line even if it is just garbage
       homie.publish_property(String("relay/10")+cp.substring(0,1), cp.substring(2));
   }
-
+  
+  maintain();
+  
   //emontx
   if (Serial1.available()) {
     String reading = readSerial1();
     if(reading.length()) 
       homie.publish_property("emontx", reading);
   }
-  delay(100);
 }
