@@ -2,5 +2,5 @@
 Industrial Shields PLC - Home Automation
 
 # dependencies
-https://github.com/dgomes/homie
-https://github.com/dgomes/industrial-shields/
+- https://github.com/dgomes/homie
+- https://github.com/dgomes/industrial-shields/
