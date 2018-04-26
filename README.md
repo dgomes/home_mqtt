@@ -1,6 +1,7 @@
 # home_mqtt
-Industrial Shields PLC - Home Automation
+Arduino sketch that runs in an Industrial Shields PLC to control a house.
+More information in my [Blog](https://diogogomes.com/2017/12/04/home-automation/index.html)
 
-# dependencies
+# Dependencies
 - https://github.com/dgomes/homie
 - https://github.com/dgomes/industrial-shields/
