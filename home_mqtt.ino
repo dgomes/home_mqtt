@@ -14,6 +14,7 @@ PubSubClient mqttClient(ethClient);
 
 #define MAX_MDUINO_RELAY 16
 #define MAX_ARDBOX_RELAY 8
+#define I1_5 A9
 /* 
 1 - 16 : part of m-duino
 101-108 : part of remote ardbox 
@@ -47,6 +48,8 @@ const char *nodes[] = {"relay/1",
 Homie homie(mqttClient, String("m-duino"), nodes, MAX_MDUINO_RELAY+MAX_ARDBOX_RELAY); //16 relays m-duino + 8 relays from Ardbox
 RelayBox mduino(_34R);
 unsigned long time; // var created to show uptime more close to zero milliseconds as possible
+bool switch1 = true;
+int switch1_sample = 0;
 
 // RelayBox callback whenever there is a state change
 void relay_callback(uint8_t i, bool mode) {  //true = HIGH, false = LOW
@@ -104,6 +107,8 @@ void setup() {
   Serial.println(Ethernet.localIP());
   byte myip[4] = {Ethernet.localIP()[0], Ethernet.localIP()[1], Ethernet.localIP()[2], Ethernet.localIP()[3]};
 
+  pinMode(I1_5, INPUT);
+
   mqttClient.setServer(server, server_port);
   mduino.setup(relay_callback);
   homie.setBrand("industrial shields");
@@ -123,13 +128,21 @@ void maintain() {
 }
 
 void loop() {
-  maintain();
-  
   // Uptime
   if ((millis()/10000) != time) {
     time = millis()/10000;
     homie.publish_property("uptime", String(millis()/1000));
   }
+  maintain();
+
+  if(analogRead(I1_5) > 450) {
+    switch1 = true;
+    homie.publish_property("I1.5", String(switch1));
+  } else if (switch1) {
+    switch1 = false;
+    homie.publish_property("I1.5", String(switch1));     
+  }
+  maintain();
   
   //RS232 interface with ardbox PLC
   if (Serial2.available()) {
@@ -138,8 +151,7 @@ void loop() {
     DEBUG_PRINTLN("Serial2: "+cp);
     if(cp.length()>2) //check we don't fail next line even if it is just garbage
       homie.publish_property(String("relay/10")+cp.substring(0,1), cp.substring(2));
-  }
-  
+  }  
   maintain();
   
   //emontx
@@ -148,4 +160,5 @@ void loop() {
     if(reading.length()) 
       homie.publish_property("emontx", reading);
   }
+  maintain();
 }
