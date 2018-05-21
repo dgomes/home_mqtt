@@ -47,7 +47,6 @@ const char *nodes[] = {"relay/1",
 
 Homie homie(mqttClient, String("m-duino"), nodes, MAX_MDUINO_RELAY+MAX_ARDBOX_RELAY); //16 relays m-duino + 8 relays from Ardbox
 RelayBox mduino(_34R);
-unsigned long time; // var created to show uptime more close to zero milliseconds as possible
 bool switch1 = true;
 int switch1_sample = 0;
 
@@ -128,13 +127,6 @@ void maintain() {
 }
 
 void loop() {
-  // Uptime
-  if ((millis()/10000) != time) {
-    time = millis()/10000;
-    homie.publish_property("uptime", String(millis()/1000));
-  }
-  maintain();
-
   if(analogRead(I1_5) > 450) {
     switch1 = true;
     homie.publish_property("I1.5", String(switch1));
