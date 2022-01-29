@@ -99,7 +99,7 @@ void setup() {
   Serial1.begin(9600); //emontx
   Serial2.begin(2400); //ardbox
 
-  byte ip[] = { 192, 168, 1, 71 };  
+  byte ip[] = { 192, 168, 2, 71 };
   Ethernet.begin(mac, ip);
   
   Serial.print("localIP: ");
@@ -111,7 +111,7 @@ void setup() {
   mqttClient.setServer(server, server_port);
   mduino.setup(relay_callback);
   homie.setBrand("industrial shields");
-  homie.setFirmware("mduino", "0.2.1");
+  homie.setFirmware("mduino", "0.2.2");
   homie.setup(myip , mqtt_callback);
 
   wdt_enable(WDTO_8S);
@@ -127,6 +127,7 @@ void maintain() {
 }
 
 void loop() {
+  /*
   if(analogRead(I1_5) > 450) {
     switch1 = true;
     homie.publish_property("I1.5", String(switch1));
@@ -135,7 +136,9 @@ void loop() {
     homie.publish_property("I1.5", String(switch1));     
   }
   maintain();
-  
+  */  
+
+
   //RS232 interface with ardbox PLC
   if (Serial2.available()) {
     String cp = Serial2.readStringUntil('\n');
