@@ -4,7 +4,7 @@
 HA_Device::HA_Device(const IPAddress &server, const int server_port, const char *name, const uint8_t mac[6])
 {
     mqttClient = PubSubClient(server, server_port, ethClient);
-    mqttClient.setBufferSize(512);
+    mqttClient.setBufferSize(DISC_BUFFER_SIZE);
 
     snprintf(this->name, 32, "%s", name);
     snprintf(this->mac_address, 16, "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -29,7 +29,8 @@ bool HA_Device::publish_property(const char *property, const char *value,
     {
         char fail_str[36];
         snprintf(fail_str, 36, "failed publish_property at %ld", millis() / 1000);
-        mqttClient.publish("debug", fail_str, retain);
+        snprintf(prop, 64, "%s%s", base_topic, "debug");
+        mqttClient.publish(prop, fail_str);
     }
     return rc;
 }
@@ -46,8 +47,8 @@ void HA_Device::setup(const char *manufacturer, const char *model, const char *f
     mqttClient.setCallback(callback);
 
     snprintf(ha_dev, 128,
-             "\"dev\":{\"name\": \"%s\", \"ids\":[\"%s\"], \"mf\":\"%s\", \"mdl\":\"%s\"}",
-             name, mac_address, manufacturer, model);
+             "\"dev\":{\"name\": \"%s\", \"ids\":[\"%s\"], \"mf\":\"%s\", \"mdl\":\"%s\", \"sw\": \"%s\"}",
+             name, mac_address, manufacturer, model, fw_version);
 
     while (!connect())
     {
@@ -64,7 +65,7 @@ bool HA_Device::connect()
     char status_topic[24];
     snprintf(status_topic, 24, "%s%s", base_topic, "status");
 
-    if (!mqttClient.connect(name, NULL, NULL, status_topic, 0, true, "offline", 1))
+    if (!mqttClient.connect(name, NULL, NULL, status_topic, 0, true, "offline"))
     {
         Serial.print("MQTT State = ");
         Serial.println(mqttClient.state());
@@ -101,8 +102,8 @@ void HA_Device::discovery_light(const char *subtopic, unsigned pushtime)
     // Process Error
     if (!rc)
     {
-        snprintf(buffer, DISC_BUFFER_SIZE, "Failed to advertise switch %s %s= %d", subtopic, buffer, rc);
-        mqttClient.publish("debug", buffer);
+        snprintf(buffer, DISC_BUFFER_SIZE, "Failed to advertise light %s = %d", subtopic, rc);
+        publish_property("debug", buffer);
     }
 }
 
@@ -149,7 +150,7 @@ void HA_Device::discovery_switch(const char *subtopic, unsigned pushtime = 0)
     if (!rc)
     {
         snprintf(buffer, DISC_BUFFER_SIZE, "Failed to advertise switch %s = %d", subtopic, rc);
-        mqttClient.publish("debug", buffer);
+        publish_property("debug", buffer);
     }
 }
 
@@ -157,15 +158,15 @@ void HA_Device::discovery_sensor(const char *subtopic, const char *device_class,
 {
     bool rc = true;
     char buffer[DISC_BUFFER_SIZE];
-
+    char sensor[64];
+    snprintf(sensor, 64, "%s_%s", subtopic, value);
     char array_index[4] = "";   //if index = -1 we don't have array_index
     if (index >= 0)
     {
-        snprintf(array_index, 4, "[%]", index);
+        snprintf(sensor, 64, "%s_%s_%d", subtopic, value, index);
+        snprintf(array_index, 4, "[%d]", index);
     }
     // Configure Home Assistant discovery
-    char sensor[64];
-    snprintf(sensor, 64, "%s_%s_%d", subtopic, value, index);
     snprintf(buffer, DISC_BUFFER_SIZE,
              "{\"~\": \"%s\", %s, \"avty_t\": \"~status\", "
              "\"dev_cla\": \"%s\", "
@@ -186,7 +187,7 @@ void HA_Device::discovery_sensor(const char *subtopic, const char *device_class,
     if (!rc)
     {
         snprintf(buffer, DISC_BUFFER_SIZE, "Failed to advertise sensor %s %s %d = %d", subtopic, value, index, rc);
-        mqttClient.publish("debug", buffer);
+        publish_property("debug", buffer);
     }
 }
 

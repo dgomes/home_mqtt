@@ -33,7 +33,7 @@ relay relay_conf[] = {
     {"relay_3", SWITCH, 0},
     {"relay_4", SWITCH, 4000},
     {"relay_5", SWITCH, 0},
-    {"relay_6", SWITCH, 0},
+    {"relay_6", SWITCH, 0},   // Muros Trás
     {"relay_7", SWITCH, 0},
     {"relay_8", SWITCH, 0},
     {"relay_9", SWITCH, 0},
@@ -43,12 +43,12 @@ relay relay_conf[] = {
     {"relay_13", SWITCH, 0},
     {"relay_14", SWITCH, 0},
     {"relay_15", SWITCH, 0},
-    {"relay_16", SWITCH, 0},
+    {"relay_16", SWITCH, 1050},  // PRH
     {"relay_101", SWITCH, 0},
     {"relay_102", SWITCH, 0},
     {"relay_103", SWITCH, 0},
     {"relay_104", SWITCH, 0},
-    {"relay_105", SWITCH, 0},
+    {"relay_105", SWITCH, 1050}, // Toalheiros
     {"relay_106", SWITCH, 0},
     {"relay_107", SWITCH, 0},
     {"relay_108", SWITCH, 0},
@@ -75,6 +75,12 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   strncpy(sanatized_payload, (const char *)payload, length);
   sanatized_payload[length] = NULL;
   unsigned long push_time = strtol(sanatized_payload, &pEnd, 10);
+
+  if(strcmp("cover_", (const char *)topic + ha_device.get_base_topic_length()) == 0) {  
+    Serial.print("Handle cover "); 
+    Serial.println(relay_number);
+    return;
+  }
 
   if (relay_number >= 1 && relay_number <= MAX_MDUINO_RELAY)
   {
@@ -122,28 +128,8 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   }
 }
 
-void setup()
+void discovery()
 {
-  // setup watchdog
-  wdt_enable(WDTO_8S);
-
-  Serial.begin(9600);
-  Serial.println("M-DUINO HA_Device v3");
-
-  Serial1.begin(9600);      // emontx
-  Serial1.setTimeout(2000); // we have a reading every 2 seconds
-
-  Serial2.begin(2400); // ardbox
-
-  Ethernet.begin(mac, ip);
-  delay(1000);
-
-  Serial.print("localIP: ");
-  Serial.println(Ethernet.localIP());
-
-  mduino.setup(relay_callback);
-  ha_device.setup("industrial shields", "m-duino", "0.3.0", mqtt_callback);
-
   for (int i = 0; i < MAX_MDUINO_RELAY + MAX_ARDBOX_RELAY; i++) // 16 relays m-duino + 8 relays from Ardbox
   {
     maintain();
@@ -164,10 +150,34 @@ void setup()
     ha_device.discovery_sensor("emontx", "power", "ct", "W", i);
   }
   ha_device.discovery_sensor("emontx", "voltage", "Vrms", "V");
+}
+
+void setup()
+{
+  // setup watchdog
+  wdt_enable(WDTO_8S);
+
+  Serial.begin(9600);
+  Serial.println("M-DUINO HA_Device v3");
+
+  Serial1.begin(9600);      // emontx
+  Serial1.setTimeout(2100); // we have a reading every 2 seconds
+
+  Serial2.begin(2400); // ardbox
+
+  Ethernet.begin(mac); //Ethernet.begin(mac, ip);
+  delay(1000);
+
+  Serial.print("localIP: ");
+  Serial.println(Ethernet.localIP());
+
+  mduino.setup(relay_callback);
+  ha_device.setup("industrial shields", "m-duino", "0.3.0", mqtt_callback);
+
+  /* Setup done, now moving into discovery */
+  discovery();
 
   Serial.println("setup() done");
-
-  Serial.println(sizeof(relay_conf));
 }
 
 void maintain()
@@ -178,6 +188,33 @@ void maintain()
   delay(50);
 }
 
+/* Test if we open and close {} and "" */
+bool tentative_json(const char *json, unsigned length) 
+{
+  bool has_brackets = false;
+  int brackets = 0;
+  int quotation_mark = 0;
+
+  if(length < 2) 
+    return false;
+
+  for(int i=0; i<length; i++) {
+    if(json[i] == '{') {
+      has_brackets = true;
+      brackets++;
+    }
+    else if(json[i] == '}')
+      brackets--;
+    else if(json[i] == '"' && (quotation_mark & 1 == quotation_mark))
+      quotation_mark--;
+    else if(json[i] == '"')
+      quotation_mark++;
+  }
+
+  return has_brackets && (brackets == quotation_mark) && (brackets == 0);
+}
+
+
 void loop()
 {
   // emontx
@@ -186,8 +223,10 @@ void loop()
     char emontx_buf[64];
     int len = Serial1.readBytesUntil('\n', emontx_buf, 64);
     emontx_buf[len] = NULL;
-    if (emontx_buf[0] == '{' && strlen(emontx_buf) > 0)
+    if (tentative_json(emontx_buf, strlen(emontx_buf)))
       ha_device.publish_property("emontx", emontx_buf);
+    else
+      ha_device.publish_property("debug", emontx_buf);
   }
   maintain();
 
