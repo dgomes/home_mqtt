@@ -28,6 +28,7 @@
 #define SWITCH 1
 #define COVER 2
 #define SENSOR 3
+#define DISABLED 4
 
 class HA_Device
 {

@@ -1,4 +1,6 @@
 #include <MemoryFree.h>
+#include <avr/wdt.h>
+
 #include "ha_mqtt.h"
 
 HA_Device::HA_Device(const IPAddress &server, const int server_port, const char *name, const uint8_t mac[6])
@@ -53,6 +55,8 @@ void HA_Device::setup(const char *manufacturer, const char *model, const char *f
     while (!connect())
     {
         delay(1000);
+        wdt_reset();
+        Ethernet.maintain();
     }
 
     Serial.println("HA_Device::setup DONE");

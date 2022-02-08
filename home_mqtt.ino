@@ -23,35 +23,52 @@ const char *device_name = "m-duinoA";
 typedef struct
 {
   char subtopic[12];
-  char type;        //  see ha_mqtt.h
+  uint8_t type;     //  see ha_mqtt.h
   uint32_t payload; // 0 = ON/OFF ; number = milliseconds of operation
 } relay;
 
 relay relay_conf[] = {
-    {"relay_1", SWITCH, 0},
-    {"relay_2", LIGHT, 2000},
-    {"relay_3", SWITCH, 0},
-    {"relay_4", SWITCH, 4000},
-    {"relay_5", SWITCH, 0},
-    {"relay_6", SWITCH, 0},   // Muros Trás
-    {"relay_7", SWITCH, 0},
-    {"relay_8", SWITCH, 0},
-    {"relay_9", SWITCH, 0},
-    {"relay_10", SWITCH, 0},
-    {"relay_11", SWITCH, 0},
-    {"relay_12", SWITCH, 0},
-    {"relay_13", SWITCH, 0},
-    {"relay_14", SWITCH, 0},
-    {"relay_15", SWITCH, 0},
-    {"relay_16", SWITCH, 1050},  // PRH
-    {"relay_101", SWITCH, 0},
-    {"relay_102", SWITCH, 0},
-    {"relay_103", SWITCH, 0},
-    {"relay_104", SWITCH, 0},
-    {"relay_105", SWITCH, 1050}, // Toalheiros
-    {"relay_106", SWITCH, 0},
-    {"relay_107", SWITCH, 0},
-    {"relay_108", SWITCH, 0},
+    {"relay_1", COVER, 0},
+    {"relay_2", COVER, 0},
+    {"relay_3", COVER, 0},
+    {"relay_4", COVER, 0},
+    {"relay_5", COVER, 0},
+    {"relay_6", LIGHT, 950},
+    {"relay_7", LIGHT, 850},
+    {"relay_8", COVER, 0},
+    {"relay_9", LIGHT, 950},
+    {"relay_10", LIGHT, 850},
+    {"relay_11", LIGHT, 850},
+    {"relay_12", DISABLED, 0},
+    {"relay_13", DISABLED, 0},
+    {"relay_14", DISABLED, 0},
+    {"relay_15", DISABLED, 0},
+    {"relay_16", SWITCH, 1050},
+    {"relay_101", COVER, 0},
+    {"relay_102", COVER, 0},
+    {"relay_103", COVER, 0},
+    {"relay_104", COVER, 0},
+    {"relay_105", SWITCH, 1050},
+    {"relay_106", COVER, 0},
+    {"relay_107", COVER, 0},
+    {"relay_108", LIGHT, 850},
+};
+
+typedef struct
+{
+  char subtopic[12];
+  uint8_t up;          // relay number
+  uint8_t down;        // relay number
+  uint32_t traveltime; // milliseconds of operation
+} cover;
+
+cover cover_conf[]{
+    {"cover_1", 8, 3, 32000},
+    {"cover_2", 5, 4, 32000},
+    {"cover_3", 2, 1, 25000},
+    {"cover_4", 102, 103, 30000},
+    {"cover_3", 101, 106, 13000},
+    {"cover_4", 104, 107, 32000},
 };
 
 HA_Device ha_device(server, server_port, device_name, mac);
@@ -76,8 +93,9 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   sanatized_payload[length] = NULL;
   unsigned long push_time = strtol(sanatized_payload, &pEnd, 10);
 
-  if(strcmp("cover_", (const char *)topic + ha_device.get_base_topic_length()) == 0) {  
-    Serial.print("Handle cover "); 
+  if (strcmp("cover_", (const char *)topic + ha_device.get_base_topic_length()) == 0)
+  {
+    Serial.print("Handle cover ");
     Serial.println(relay_number);
     return;
   }
@@ -165,7 +183,7 @@ void setup()
 
   Serial2.begin(2400); // ardbox
 
-  Ethernet.begin(mac); //Ethernet.begin(mac, ip);
+  Ethernet.begin(mac); // Ethernet.begin(mac, ip);
   delay(1000);
 
   Serial.print("localIP: ");
@@ -189,31 +207,32 @@ void maintain()
 }
 
 /* Test if we open and close {} and "" */
-bool tentative_json(const char *json, unsigned length) 
+bool tentative_json(const char *json, unsigned length)
 {
   bool has_brackets = false;
   int brackets = 0;
   int quotation_mark = 0;
 
-  if(length < 2) 
+  if (length < 2)
     return false;
 
-  for(int i=0; i<length; i++) {
-    if(json[i] == '{') {
+  for (int i = 0; i < length; i++)
+  {
+    if (json[i] == '{')
+    {
       has_brackets = true;
       brackets++;
     }
-    else if(json[i] == '}')
+    else if (json[i] == '}')
       brackets--;
-    else if(json[i] == '"' && (quotation_mark & 1 == quotation_mark))
+    else if (json[i] == '"' && (quotation_mark & 1 == quotation_mark))
       quotation_mark--;
-    else if(json[i] == '"')
+    else if (json[i] == '"')
       quotation_mark++;
   }
 
   return has_brackets && (brackets == quotation_mark) && (brackets == 0);
 }
-
 
 void loop()
 {
