@@ -111,6 +111,40 @@ void HA_Device::discovery_light(const char *subtopic, unsigned pushtime)
     }
 }
 
+
+void HA_Device::discovery_cover(const char *subtopic)
+{
+    bool rc = true;
+    char buffer[DISC_BUFFER_SIZE];
+
+    // Configure Home Assistant discovery
+    snprintf(buffer, DISC_BUFFER_SIZE,
+             "{\"~\": \"%s\", %s, \"avty_t\": \"~status\", "
+             "\"dev_cla\": \"shade\", \"opt\": \"true\", "
+             "\"cmd_t\":\"~%s/set\", "
+             "\"stat_t\":\"~%s\", \"name\":\"%s\", "
+             "\"uniq_id\":\"cover_%s_%s\"}",
+             base_topic, ha_dev,
+             subtopic,
+             subtopic, subtopic,
+             mac_address, subtopic);
+
+    char discovery_topic[128];
+    set_discovery_topic(discovery_topic, "cover", subtopic);
+    rc = mqttClient.publish(discovery_topic, buffer, false);
+
+    // Subscribe subtopic control
+    if(rc)
+        rc = subscribe_property(subtopic);
+    // Process Error
+    if (!rc)
+    {
+        snprintf(buffer, DISC_BUFFER_SIZE, "Failed to advertise switch %s = %d", subtopic, rc);
+        publish_property("debug", buffer);
+    }
+}
+
+
 void HA_Device::discovery_switch(const char *subtopic, unsigned pushtime = 0)
 {
     bool rc = true;

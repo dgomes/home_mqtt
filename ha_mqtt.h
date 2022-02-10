@@ -18,6 +18,14 @@
 #include <PubSubClient.h>
 #include <EthernetENC.h> //TODO replace with UIPEthernet.h
 
+#define HA_PAYLOAD_OPEN "OPEN"
+#define HA_PAYLOAD_CLOSE "CLOSE"
+#define HA_PAYLOAD_STOP "STOP"
+#define HA_STATE_OPENING  "opening"
+#define HA_STATE_CLOSING  "closing"
+#define HA_STATE_STOPPED  "stopped"
+
+
 #define MQTT_BASE_TOPIC "devices/"
 #define RECONNECT_DELAY 5000
 #define UPTIME_REPORT_PERIOD 60000
@@ -53,6 +61,7 @@ public:
   void setup(const char *manufacturer, const char *model, const char *fw_version, MQTT_CALLBACK_SIGNATURE);
   bool loop();
 
+  void discovery_cover(const char *subtopic);
   void discovery_switch(const char *subtopic, unsigned pushtime = 0);
   void discovery_light(const char *subtopic, unsigned pushtime = 1000);
   void discovery_sensor(const char *subtopic, const char *device_class, const char *value, const char *unit, int index = -1);
