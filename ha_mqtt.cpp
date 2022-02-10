@@ -155,7 +155,7 @@ void HA_Device::discovery_switch(const char *subtopic, unsigned pushtime = 0)
     {
         // we actually switch a contactor
         snprintf(switch_type_buf, 80,
-                 "\"optimistic\":\"true\", \"pl_on\": \"%d\", \"pl_off\": \"%d\", ",
+                 "\"pl_on\": \"%d\", \"pl_off\": \"%d\", ",
                  pushtime, pushtime);
     }
     else

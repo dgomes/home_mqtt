@@ -60,83 +60,138 @@ typedef struct
   uint8_t up;          // relay number
   uint8_t down;        // relay number
   uint32_t traveltime; // milliseconds of operation
+  char state;
 } cover;
 
 cover cover_conf[]{
-    {"cover_1", 8, 3, 32000},
-    {"cover_2", 5, 4, 32000},
-    {"cover_3", 2, 1, 25000},
-    {"cover_4", 102, 103, 30000},
-    {"cover_3", 101, 106, 13000},
-    {"cover_4", 104, 107, 32000},
+    {"cover_1", 8, 3, 32000, 'S'},
+    {"cover_2", 5, 4, 32000, 'S'},
+    {"cover_3", 2, 1, 25000, 'S'},
+    {"cover_4", 102, 103, 30000, 'S'},
+    {"cover_5", 101, 106, 13000, 'S'},
+    {"cover_6", 104, 107, 32000, 'S'},
 };
 
 HA_Device ha_device(server, server_port, device_name, mac);
 RelayBox mduino(_34R);
 
 // RelayBox callback whenever there is a state change
-void relay_callback(uint8_t i, bool mode)
+void relay_callback(uint8_t relay, bool mode)
 { // true = HIGH, false = LOW
   char relay_buf[10];
-  snprintf(relay_buf, 10, "relay_%d", i);
+  snprintf(relay_buf, 10, "relay_%d", relay);
   ha_device.publish_property(relay_buf, mode ? "ON" : "OFF");
+
+  for (int i = 0; i < sizeof(cover_conf) / sizeof(cover); i++)
+  {
+    cover *curr = &cover_conf[i];
+
+    if (relay == curr->up and curr->state == 'O' && !mode)
+    {
+      ha_device.publish_property(curr->subtopic, "open");
+      break;
+    }
+    else if (relay == curr->down and curr->state == 'C' && !mode)
+    {
+      ha_device.publish_property(curr->subtopic, "closed");
+      break;
+    }
+  }
+}
+
+void activate_relay(int relay_number, bool mode, unsigned long push_time = 0)
+{
+  char *ardbox_cmd = "#,12345678"; // relay_number,pushtime/true/false
+  bool is_ardbox = (relay_number > 100 and relay_number <= (100+MAX_ARDBOX_RELAY));
+  bool is_mduino = (relay_number > 0 and relay_number <= MAX_MDUINO_RELAY);
+
+  if (!is_ardbox and !is_mduino)
+  {
+    ha_device.publish_property("debug", "unknown relay_number activation");
+    return;
+  }
+
+  if (push_time > 0)
+  {
+    if (is_ardbox)
+    {
+      snprintf(ardbox_cmd, 16, "%d,%ld", relay_number - 100, push_time);
+      Serial2.println(ardbox_cmd);
+    }
+    else
+    {
+      mduino.switchRelay(relay_number, push_time);
+    }
+  }
+  else
+  {
+    if (is_ardbox)
+    {
+      snprintf(ardbox_cmd, 16, "%d,%s", relay_number - 100, mode ? "true" : "false");
+      Serial2.println(ardbox_cmd);
+    }
+    else
+    {
+      mduino.switchRelay(relay_number, mode);
+    }
+  }
 }
 
 // HA_Device will call this callback for all subscriptions
 void mqtt_callback(char *topic, byte *payload, unsigned int length)
 {
   char *pEnd;
-  int relay_number = strtol((const char *)topic + ha_device.get_base_topic_length() + strlen("relay_"), &pEnd, 10);
+  int relay_number = strtol((const char *)topic + ha_device.get_base_topic_length() + strlen("relay_"), &pEnd, 10); // luckly cover_ is the same size as relay_
 
   char sanatized_payload[length + 1];
   strncpy(sanatized_payload, (const char *)payload, length);
   sanatized_payload[length] = NULL;
   unsigned long push_time = strtol(sanatized_payload, &pEnd, 10);
 
-  if (strcmp("cover_", (const char *)topic + ha_device.get_base_topic_length()) == 0)
+  if (strncmp("cover_", (const char *)topic + ha_device.get_base_topic_length(), 6) == 0)
   {
-    Serial.print("Handle cover ");
-    Serial.println(relay_number);
+    cover *curr = &cover_conf[relay_number - 1];
+
+    if (strncmp(sanatized_payload, HA_PAYLOAD_OPEN, 4) == 0)
+    {
+      curr->state = 'O';
+      activate_relay(curr->down, false);
+      delay(500);
+      activate_relay(curr->up, true, (unsigned long)curr->traveltime);
+      ha_device.publish_property(curr->subtopic, HA_STATE_OPENING);
+    }
+    else if (strncmp(sanatized_payload, HA_PAYLOAD_CLOSE, 5) == 0)
+    {
+      curr->state = 'C';
+      activate_relay(curr->up, false);
+      delay(500);
+      activate_relay(curr->down, true, (unsigned long)curr->traveltime);
+      ha_device.publish_property(curr->subtopic, HA_STATE_CLOSING);
+    }
+    else if (strncmp(sanatized_payload, HA_PAYLOAD_STOP, 4) == 0)
+    {
+      curr->state = 'S';
+      activate_relay(curr->up, false);
+      activate_relay(curr->down, false);
+      ha_device.publish_property(curr->subtopic, HA_STATE_STOPPED);
+    }
+
     return;
   }
 
-  if (relay_number >= 1 && relay_number <= MAX_MDUINO_RELAY)
+  if (relay_number >= 1 && relay_number <= MAX_ARDBOX_RELAY + 100)
   {
     if (push_time > 0)
     {
-      mduino.switchRelay(relay_number, push_time);
+      activate_relay(relay_number, true, push_time);
     }
     else if (strncmp(sanatized_payload, "ON", 2) == 0)
     {
-      mduino.switchRelay(relay_number, true);
+      activate_relay(relay_number, true);
     }
     else if (strncmp(sanatized_payload, "OFF", 3) == 0)
     {
-      mduino.switchRelay(relay_number, false);
-    }
-    else
-    {
-      DEBUG_PRINTLN(String(topic) + "\t" + String(sanatized_payload));
-    }
-    return;
-  }
-
-  if (relay_number >= 101 && relay_number <= (100 + MAX_ARDBOX_RELAY))
-  {
-    relay_number -= 100;
-    DEBUG_PRINTLN(String("> ") + String(relay_number) + "," + String(push_time));
-
-    if (push_time > 0)
-    {
-      Serial2.println(String(relay_number) + "," + String(push_time));
-    }
-    else if (strncmp(sanatized_payload, "ON", 2) == 0)
-    {
-      Serial2.println(String(relay_number) + ",true");
-    }
-    else if (strncmp(sanatized_payload, "OFF", 3) == 0)
-    {
-      Serial2.println(String(relay_number) + ",false");
+      activate_relay(relay_number, false);
     }
     else
     {
@@ -148,7 +203,8 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 
 void discovery()
 {
-  for (int i = 0; i < MAX_MDUINO_RELAY + MAX_ARDBOX_RELAY; i++) // 16 relays m-duino + 8 relays from Ardbox
+  // Switch and Light discovery
+  for (int i = 0; i < sizeof(relay_conf) / sizeof(relay); i++)
   {
     maintain();
     if (relay_conf[i].type == SWITCH)
@@ -159,6 +215,13 @@ void discovery()
     {
       ha_device.discovery_light(relay_conf[i].subtopic, relay_conf[i].payload);
     }
+  }
+
+  // Cover discovery
+  for (int i = 0; i < sizeof(cover_conf) / sizeof(cover); i++)
+  {
+    maintain();
+    ha_device.discovery_cover(cover_conf[i].subtopic);
   }
 
   // EmonTx discovery
@@ -252,14 +315,11 @@ void loop()
   // RS232 interface with ardbox PLC
   if (Serial2.available())
   {
-    char buf[64];
-    int len = Serial2.readBytesUntil('\n', buf, 64); // # true/false - relay number and bool
-    buf[len] = NULL;
-    if (strlen(buf) > 0)
-    { // check we don't fail next line even if it is just garbage
-      char *relay_buf = "relay_10X";
-      relay_buf[8] = buf[0];                                               // fill in the relay number (suffix)
-      ha_device.publish_property(relay_buf, buf[2] == 't' ? "ON" : "OFF"); // t = true else false
+    char buf[9];                                           // format:  #,bool
+    int len = Serial2.readBytesUntil('\n', buf, 9);        // # relay number and bool, e.g.:  7,true
+    if (strlen(buf) > 3 && buf[0] >= '0' && buf[0] <= '9') // checks that next line is sane
+    {
+      relay_callback(100 + (buf[0] - '0'), buf[2] == 't'); // t = true else false
     }
   }
   maintain();
