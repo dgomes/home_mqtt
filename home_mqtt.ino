@@ -148,6 +148,12 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   sanatized_payload[length] = NULL;
   unsigned long push_time = strtol(sanatized_payload, &pEnd, 10);
 
+  if (strncmp(HA_STATUS, (const char *)topic, 11) == 0 and strncmp((const char *) payload, HA_STATUS_PAYLOAD_ONLINE, 6) == 0 ) {
+    discovery();
+    ha_device.publish_property("status", HA_STATUS_PAYLOAD_ONLINE);
+    return;
+  }
+
   if (strncmp("cover_", (const char *)topic + ha_device.get_base_topic_length(), 6) == 0)
   {
     cover *curr = &cover_conf[relay_number - 1];

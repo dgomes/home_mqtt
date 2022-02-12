@@ -59,6 +59,8 @@ void HA_Device::setup(const char *manufacturer, const char *model, const char *f
         Ethernet.maintain();
     }
 
+    mqttClient.subscribe(HA_STATUS);
+
     Serial.println("HA_Device::setup DONE");
 }
 
@@ -69,13 +71,13 @@ bool HA_Device::connect()
     char status_topic[24];
     snprintf(status_topic, 24, "%s%s", base_topic, "status");
 
-    if (!mqttClient.connect(name, NULL, NULL, status_topic, 0, true, "offline"))
+    if (!mqttClient.connect(name, NULL, NULL, status_topic, 0, true, HA_STATUS_PAYLOAD_OFFLINE))
     {
         Serial.print("MQTT State = ");
         Serial.println(mqttClient.state());
         return false;
     }
-    mqttClient.publish(status_topic, "online", true);
+    mqttClient.publish(status_topic, HA_STATUS_PAYLOAD_ONLINE, true);
 
     return true;
 }

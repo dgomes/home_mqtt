@@ -16,7 +16,7 @@
 #endif
 
 #include <PubSubClient.h>
-#include <EthernetENC.h> //TODO replace with UIPEthernet.h
+#include <EthernetENC.h>
 
 #define HA_PAYLOAD_OPEN "OPEN"
 #define HA_PAYLOAD_CLOSE "CLOSE"
@@ -24,7 +24,9 @@
 #define HA_STATE_OPENING  "opening"
 #define HA_STATE_CLOSING  "closing"
 #define HA_STATE_STOPPED  "stopped"
-
+#define HA_STATUS "hass/status"
+#define HA_STATUS_PAYLOAD_ONLINE  "online"
+#define HA_STATUS_PAYLOAD_OFFLINE  "offline"
 
 #define MQTT_BASE_TOPIC "devices/"
 #define RECONNECT_DELAY 5000
