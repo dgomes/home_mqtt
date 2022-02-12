@@ -194,7 +194,7 @@ void HA_Device::discovery_switch(const char *subtopic, unsigned pushtime = 0)
     }
 }
 
-void HA_Device::discovery_sensor(const char *subtopic, const char *device_class, const char *value, const char *unit, int index = -1, const char *entity_category=NULL)
+void HA_Device::discovery_sensor(const char *subtopic, const char *device_class, const char *value, const char *unit, int index = -1, const char *entity_category=NULL, const char *state_class=NULL)
 {
     bool rc = true;
     char buffer[DISC_BUFFER_SIZE];
@@ -209,23 +209,28 @@ void HA_Device::discovery_sensor(const char *subtopic, const char *device_class,
 
     char device_class_str[40] = "";
     if(device_class != NULL) {
-        snprintf(device_class_str, 40, "\"dev_cla\": \"%s\",", device_class);
+        snprintf(device_class_str, 40, "\"dev_cla\":\"%s\",", device_class);
     }
 
     char entity_category_str[40] = "";
     if(entity_category != NULL) {
-        snprintf(entity_category_str, 40, "\"entity_category\": \"%s\",", entity_category);
+        snprintf(entity_category_str, 40, "\"entity_category\":\"%s\",", entity_category);
+    }
+
+    char state_class_str[32] = "";
+    if(state_class != NULL) {
+        snprintf(state_class_str, 32, "\"stat_cla\":\"%s\",", state_class);
     }
 
     // Configure Home Assistant discovery
     snprintf(buffer, DISC_BUFFER_SIZE,
-             "{\"~\": \"%s\", %s, \"avty_t\": \"~status\", "
-             "%s %s "
-             "\"name\":\"%s\", \"unit_of_meas\":\"%s\", "
-             "\"stat_t\":\"~%s\", \"uniq_id\":\"sensor_%s_%s_%s_%d\", "
+             "{\"~\":\"%s\",%s,\"avty_t\":\"~status\","
+             "%s%s%s"
+             "\"name\":\"%s\",\"unit_of_meas\":\"%s\","
+             "\"stat_t\":\"~%s\",\"uniq_id\":\"sensor_%s_%s_%s_%d\","
              "\"val_tpl\":\"{{ value_json.%s%s }}\"}",
              base_topic, ha_dev,
-             device_class_str, entity_category_str,
+             device_class_str, entity_category_str, state_class_str, 
              sensor, unit,
              subtopic, mac_address, subtopic, value, index,
              value, array_index);

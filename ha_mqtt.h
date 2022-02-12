@@ -66,7 +66,7 @@ public:
   void discovery_cover(const char *subtopic);
   void discovery_switch(const char *subtopic, unsigned pushtime = 0);
   void discovery_light(const char *subtopic, unsigned pushtime = 1000);
-  void discovery_sensor(const char *subtopic, const char *device_class, const char *value, const char *unit, int index = -1, const char *entity_category=NULL);
+  void discovery_sensor(const char *subtopic, const char *device_class, const char *value, const char *unit, int index = -1, const char *entity_category=NULL, const char *state_class=NULL);
 
   bool publish_property(const char *property, const char *value, bool retain = false);
   bool subscribe_property(const char *property);

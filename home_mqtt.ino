@@ -234,9 +234,9 @@ void discovery()
   for (uint8_t i = 0; i < 4; i++)
   {
     maintain();
-    ha_device.discovery_sensor("emontx", "power", "ct", "W", i);
+    ha_device.discovery_sensor("emontx", "power", "ct", "W", i, NULL, "measurement");
   }
-  ha_device.discovery_sensor("emontx", "voltage", "Vrms", "V");
+  ha_device.discovery_sensor("emontx", "voltage", "Vrms", "V", -1, NULL, "measurement");
   ha_device.discovery_sensor("info", NULL, "uptime", "s", -1, "diagnostic");
   ha_device.discovery_sensor("info", NULL, "freeMemory", "b", -1, "diagnostic");
 }
