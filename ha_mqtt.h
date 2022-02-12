@@ -30,7 +30,7 @@
 #define RECONNECT_DELAY 5000
 #define UPTIME_REPORT_PERIOD 60000
 
-#define DISC_BUFFER_SIZE  384
+#define DISC_BUFFER_SIZE  448
 
 #define LIGHT 0
 #define SWITCH 1
@@ -64,7 +64,7 @@ public:
   void discovery_cover(const char *subtopic);
   void discovery_switch(const char *subtopic, unsigned pushtime = 0);
   void discovery_light(const char *subtopic, unsigned pushtime = 1000);
-  void discovery_sensor(const char *subtopic, const char *device_class, const char *value, const char *unit, int index = -1);
+  void discovery_sensor(const char *subtopic, const char *device_class, const char *value, const char *unit, int index = -1, const char *entity_category=NULL);
 
   bool publish_property(const char *property, const char *value, bool retain = false);
   bool subscribe_property(const char *property);
