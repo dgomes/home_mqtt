@@ -64,7 +64,7 @@ typedef struct
 } cover;
 
 cover cover_conf[]{
-    {"cover_1", 8, 3, 32000, 'S'},    // (S)topped is the initial state of the cover
+    {"cover_1", 8, 3, 32000, 'S'}, // (S)topped is the initial state of the cover
     {"cover_2", 5, 4, 32000, 'S'},
     {"cover_3", 2, 1, 25000, 'S'},
     {"cover_4", 102, 103, 30000, 'S'},
@@ -102,7 +102,7 @@ void relay_callback(uint8_t relay, bool mode)
 void activate_relay(int relay_number, bool mode, unsigned long push_time = 0)
 {
   char *ardbox_cmd = "#,12345678"; // relay_number,pushtime/true/false
-  bool is_ardbox = (relay_number > 100 and relay_number <= (100+MAX_ARDBOX_RELAY));
+  bool is_ardbox = (relay_number > 100 and relay_number <= (100 + MAX_ARDBOX_RELAY));
   bool is_mduino = (relay_number > 0 and relay_number <= MAX_MDUINO_RELAY);
 
   if (!is_ardbox and !is_mduino)
@@ -148,7 +148,8 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   sanatized_payload[length] = NULL;
   unsigned long push_time = strtol(sanatized_payload, &pEnd, 10);
 
-  if (strncmp(HA_STATUS, (const char *)topic, 11) == 0 and strncmp((const char *) payload, HA_STATUS_PAYLOAD_ONLINE, 6) == 0 ) {
+  if (strncmp(HA_STATUS, (const char *)topic, 11) == 0 and strncmp((const char *)payload, HA_STATUS_PAYLOAD_ONLINE, 6) == 0)
+  {
     discovery();
     ha_device.publish_property("status", HA_STATUS_PAYLOAD_ONLINE);
     return;
@@ -160,7 +161,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 
     if (strncmp(sanatized_payload, HA_PAYLOAD_OPEN, 4) == 0)
     {
-      curr->state = 'O';  //Open
+      curr->state = 'O'; // Open
       activate_relay(curr->down, false);
       delay(500);
       activate_relay(curr->up, true, (unsigned long)curr->traveltime);
@@ -168,7 +169,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
     }
     else if (strncmp(sanatized_payload, HA_PAYLOAD_CLOSE, 5) == 0)
     {
-      curr->state = 'C';  //Close
+      curr->state = 'C'; // Close
       activate_relay(curr->up, false);
       delay(500);
       activate_relay(curr->down, true, (unsigned long)curr->traveltime);
@@ -176,7 +177,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
     }
     else if (strncmp(sanatized_payload, HA_PAYLOAD_STOP, 4) == 0)
     {
-      curr->state = 'S'; //Stop
+      curr->state = 'S'; // Stop
       activate_relay(curr->up, false);
       activate_relay(curr->down, false);
       ha_device.publish_property(curr->subtopic, HA_STATE_STOPPED);
