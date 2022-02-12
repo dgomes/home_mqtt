@@ -35,6 +35,7 @@ void RelayBox::switchRelay(int i, bool mode) {  //true = HIGH, false = LOW
         DEBUG_PRINTLN(String("Relay(")+String(i)+String(") ... ON"));
     } else {
         DEBUG_PRINTLN(String("Relay(")+String(i)+String(") ... OFF"));
+        relay_sleep[i] = 0;
     }
     digitalWrite(relay[i],mode?HIGH:LOW);
     if(this->callback)
