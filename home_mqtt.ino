@@ -1,8 +1,8 @@
-#include <relaybox.h>
 #include <avr/wdt.h>
 
-#include "ha_mqtt.h"
+#include "relaybox.h"
 #include "emontx.h"
+#include "ha_mqtt.h"
 
 const IPAddress server(192, 168, 1, 100);
 const int server_port = 1883;
@@ -64,7 +64,7 @@ typedef struct
 } cover;
 
 cover cover_conf[]{
-    {"cover_1", 8, 3, 32000, 'S'},
+    {"cover_1", 8, 3, 32000, 'S'},    // (S)topped is the initial state of the cover
     {"cover_2", 5, 4, 32000, 'S'},
     {"cover_3", 2, 1, 25000, 'S'},
     {"cover_4", 102, 103, 30000, 'S'},
@@ -154,7 +154,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 
     if (strncmp(sanatized_payload, HA_PAYLOAD_OPEN, 4) == 0)
     {
-      curr->state = 'O';
+      curr->state = 'O';  //Open
       activate_relay(curr->down, false);
       delay(500);
       activate_relay(curr->up, true, (unsigned long)curr->traveltime);
@@ -162,7 +162,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
     }
     else if (strncmp(sanatized_payload, HA_PAYLOAD_CLOSE, 5) == 0)
     {
-      curr->state = 'C';
+      curr->state = 'C';  //Close
       activate_relay(curr->up, false);
       delay(500);
       activate_relay(curr->down, true, (unsigned long)curr->traveltime);
@@ -170,7 +170,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
     }
     else if (strncmp(sanatized_payload, HA_PAYLOAD_STOP, 4) == 0)
     {
-      curr->state = 'S';
+      curr->state = 'S'; //Stop
       activate_relay(curr->up, false);
       activate_relay(curr->down, false);
       ha_device.publish_property(curr->subtopic, HA_STATE_STOPPED);
@@ -231,6 +231,8 @@ void discovery()
     ha_device.discovery_sensor("emontx", "power", "ct", "W", i);
   }
   ha_device.discovery_sensor("emontx", "voltage", "Vrms", "V");
+  ha_device.discovery_sensor("info", NULL, "uptime", "s", -1, "diagnostic");
+  ha_device.discovery_sensor("info", NULL, "freeMemory", "b", -1, "diagnostic");
 }
 
 void setup()
@@ -316,7 +318,7 @@ void loop()
   if (Serial2.available())
   {
     char buf[9];                                           // format:  #,bool
-    int len = Serial2.readBytesUntil('\n', buf, 9);        // # relay number and bool, e.g.:  7,true
+    int len = Serial2.readBytesUntil('\n', buf, 9);        // reads a relay number and bool, e.g.:  7,true
     if (strlen(buf) > 3 && buf[0] >= '0' && buf[0] <= '9') // checks that next line is sane
     {
       relay_callback(100 + (buf[0] - '0'), buf[2] == 't'); // t = true else false
